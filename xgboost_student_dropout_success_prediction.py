@@ -7,10 +7,14 @@ Original file is located at
     https://colab.research.google.com/drive/1kBxxhSs2EuqQd8362QXzM1wQWyD6NGyw
 
 # **LOAD DATA**
+
+Mengimpor modul files dari google.colab dan menjalankan fungsi files.upload() untuk memungkinkan pengguna mengunggah file lokal (misalnya, kaggle.json) ke lingkungan Google Colab.
 """
 
 from google.colab import files
 files.upload()  # Upload kaggle.json di sini
+
+"""Membuat direktori untuk menyimpan file konfigurasi API Kaggle, menyalin kredensial API, mengunduh dataset "predict-students-dropout-and-academic-success" dari Kaggle, dan mengekstraknya untuk digunakan dalam analisis."""
 
 !mkdir -p ~/.kaggle
 !cp kaggle.json ~/.kaggle/
@@ -21,11 +25,6 @@ files.upload()  # Upload kaggle.json di sini
 
 # Unzip file
 !unzip predict-students-dropout-and-academic-success.zip
-
-import pandas as pd
-
-# Cek nama file .csv-nya dulu, kemungkinan besar:
-df = pd.read_csv("/content/students_dropout_academic_success.csv")  # Ganti dengan nama file sebenarnya jika berbeda
 
 """# **IMPORT LIBRARY**"""
 
@@ -48,17 +47,30 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 
-"""# **DATA EXPLORATORY**"""
+"""# **DATA UNDERSTANDING**
+
+Memuat dataset dari file CSV
+"""
+
+df = pd.read_csv("/content/students_dropout_academic_success.csv")
+
+"""Menampilkan preview dataset, dari kode ini sekilas kita bisa melihat bahwa ada 4424 baris dan 37 kolom."""
 
 df
 
-df.head()
+"""Menampilkan nama-nama kolom dalam DataFrame df."""
 
 print(df.columns)
 
+"""Menampilkan informasi tentang DataFrame df, termasuk tipe data setiap kolom dan jumlah data non-null. Dari kode ini kita bisa melihat bahwa semua kolom bertipe data numerik (int/float) dan hanya kolom target yang bertipe data object"""
+
 df.info()
 
+"""Menampilkan statistik deskriptif dari kolom-kolom numerik dalam DataFrame df, seperti mean, standar deviasi, nilai minimum, dan nilai maksimum."""
+
 df.describe()
+
+"""Membuat heatmap matriks korelasi untuk fitur numerik. Ini membantu dalam memahami hubungan antar fitur numerik dalam dataset."""
 
 numerical_features = [
     'Marital Status',
@@ -105,10 +117,12 @@ correlation_matrix = df[numerical_features].corr().round(2)
 sns.heatmap(data=correlation_matrix, annot=True, cmap='coolwarm', linewidths=0.5, )
 plt.title("Correlation Matrix untuk Fitur Numerik ", size=20)
 
+"""Membuat histogram untuk setiap kolom numerik dalam DataFrame df. Histogram ini memberikan gambaran tentang distribusi data untuk setiap fitur."""
+
 df.hist(bins=50, figsize=(20,15))
 plt.show()
 
-"""Sebaran data berdasarkan kolom Target"""
+"""Membuat count plot untuk kolom 'target'. Ini menunjukkan distribusi kelas target (Dropout, Enrolled, Graduate) dalam dataset. Terlihat ada pebedaan  jumlah yang sangat signifikan dari ketiga kelas, hal ini nantinya akan dilakukan penyeimbangan kelas dengan teknik SMOTE"""
 
 # Target distribution
 plt.figure(figsize=(10, 6))
@@ -117,23 +131,20 @@ plt.title('Student Outcomes Distribution', fontsize=16)
 plt.xlabel('Outcome', fontsize=14)
 plt.ylabel('Number of Students', fontsize=14)
 
-"""# **DATA PREPROCESSING**
-
-Mengecek apakah ada nilai yang kosong
-"""
+"""Memeriksa dan menampilkan jumlah missing values (nilai yang hilang) di setiap kolom DataFrame df. Karena tidak ada missing values maka kita biarkan saja seperti ini."""
 
 # Melihat apakah ada missing values
 missing_values = df.isnull().sum()
 print("\nMissing values per column:")
 print(missing_values[missing_values > 0]) if any(missing_values > 0) else print("No missing values found.")
 
-"""Mengecek apakah ada nilai yang duplikat"""
+"""Memeriksa dan menampilkan jumlah baris duplikat dalam DataFrame df. Karena tidak ada baris duplikat maka kita biarkan saja seperti ini"""
 
 # Melihat apakah ada duplikasi data
 duplicates = df.duplicated().sum()
 print(f"\nDuplicate rows: {duplicates}")
 
-"""Check outliers pada data dengan continous value"""
+"""Mendeteksi dan menampilkan outlier (nilai ekstrem) dalam kolom-kolom numerik kontinu menggunakan metode Interquartile Range (IQR). Output menunjukkan jumlah dan persentase data outlier dalam berbagai variabel akademik dan demografis, dengan proporsi outlier tertinggi pada variabel seperti "Curricular units 1st sem (grade)" dan "Curricular units 2nd sem (grade)", serta sejumlah variabel tanpa outlier, seperti tingkat pengangguran dan inflasi."""
 
 # Pilih kolom float saja
 continuous = df.select_dtypes(include='float64').columns.tolist()
@@ -154,9 +165,12 @@ for col in numeric_continuous:
     outlier_pct = outliers_count / len(df) * 100
     print(f"{col}: {outliers_count} outliers ({outlier_pct:.2f}%)")
 
-"""Normalisasi outlier dengan menggunakan IQR dan menentukan batas bawah dan batas atasnya"""
+"""# **DATA PREPARATION**
 
-# Step 3: Cap outliers for key columns
+Melakukan penanganan outlier pada kolom-kolom numerik kontinu yang telah dievaluasi sebelumnya dengan menghitung batas bawah dan atas menggunakan metode Interquartile Range (IQR), lalu membatasi nilai-nilai ekstrem (outlier) dalam rentang tersebut menggunakan clip(), sehingga nilai yang terlalu rendah atau terlalu tinggi dikonversi ke batas bawah atau atas, menjaga distribusi data tanpa membuang sampel.
+"""
+
+# Cap outliers for key columns
 print("Memperbaiki nilai outliers untuk kolom continous")
 for col in numeric_continuous:
     Q1 = df[col].quantile(0.25)
@@ -172,13 +186,13 @@ for col in numeric_continuous:
 
 """Memisahkan fitur (kolom) numerik dan kategorikal dalam sebuah DataFrame (df) agar bisa dilakukan pembersihan atau pemrosesan data secara spesifik sesuai tipe datanya."""
 
-# === 1. Pisahkan fitur numerik dan kategorikal ===
+# Pisahkan fitur numerik dan kategorikal
 categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
 numeric_cols = df.select_dtypes(include=['int64', 'float64']).columns.tolist()
 
-"""Membersihkan data kategorikal dengan cara menghapus atau mengganti kategori yang jarang muncul (kurang dari 1%) di setiap kolom kategorikal."""
+"""Membersihkan kolom-kolom kategorikal dalam DataFrame dengan mengidentifikasi dan mengganti kategori langka—yaitu kategori dengan proporsi kemunculan kurang dari 1%—menjadi label 'Other', menggunakan fungsi remove_rare_categories() yang diterapkan ke setiap kolom dalam daftar categorical_cols"""
 
-# === 2. Kategorikal Cleaning: hapus kategori langka (< 1%) ===
+# Kategorikal Cleaning: hapus kategori langka (< 1%)
 def remove_rare_categories(df, col, threshold=0.01):
     value_counts = df[col].value_counts(normalize=True)
     common_categories = value_counts[value_counts > threshold].index
@@ -188,11 +202,16 @@ def remove_rare_categories(df, col, threshold=0.01):
 for col in categorical_cols:
     df = remove_rare_categories(df, col)
 
-"""Menormalkan atau men-standarisasi kolom numerik dengan StandardScaler, yaitu mengubah data agar memiliki rata-rata 0 dan standar deviasi 1."""
+"""Melakukan normalisasi (scaling) terhadap kolom-kolom numerik dalam DataFrame menggunakan StandardScaler, yang mengubah distribusi data sehingga setiap fitur memiliki nilai rata-rata 0 dan standar deviasi 1"""
 
-# === 4. Scaling / Normalization ===
+# Scaling / Normalization
 scaler = StandardScaler()
 df[numeric_cols] = scaler.fit_transform(df[numeric_cols])
+
+"""Mempersiapkan fitur (X) dengan menghapus kolom 'target' dari DataFrame, lalu mengenali dan mengubah nilai kategorikal pada kolom 'target' menjadi angka menggunakan LabelEncoder
+
+Target classes: {'Dropout': 0, 'Enrolled': 1, 'Graduate': 2}
+"""
 
 # Prepare features and target
 X = df.drop('target', axis=1)
@@ -202,17 +221,22 @@ le = LabelEncoder()
 y = le.fit_transform(df['target'])
 print(f"Target classes: {dict(zip(le.classes_, range(len(le.classes_))))}")
 
-"""SMOTE untuk mengatasi ketidakseimbangan (imbalance) kelas dalam dataset klasifikasi."""
+"""Membagi dataset menjadi data pelatihan (X_train, y_train) dan data pengujian (X_test, y_test) dengan proporsi 90% untuk pelatihan dan 10% untuk pengujian, menggunakan train_test_split dengan random_state=42 untuk reprodusibilitas dan stratify=y agar distribusi kelas pada data target tetap seimbang di kedua subset"""
 
 # Split data
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=42, stratify=y)
 print(f"Training set: {X_train.shape[0]} samples")
 print(f"Test set: {X_test.shape[0]} samples")
 
+"""Menerapkan teknik SMOTE (Synthetic Minority Over-sampling Technique) pada data pelatihan untuk mengatasi ketidakseimbangan kelas dengan menghasilkan sampel sintetis pada kelas minoritas, sehingga X_train_res dan y_train_res menjadi data pelatihan yang telah seimbang dari segi distribusi kelas."""
+
 sm = SMOTE(random_state=42)
 X_train_res, y_train_res = sm.fit_resample(X_train, y_train)
 
-"""# **MEMBANGUN MODEL**"""
+"""# **MODEL DEVELOPMENT**
+
+Membuat model XGBClassifier dengan menggunakan parameter default.
+"""
 
 # Gunakan XGBClassifier
 model = XGBClassifier()
@@ -223,7 +247,10 @@ y_pred = model.predict(X_test)
 print("Accuracy:", accuracy_score(y_test, y_pred))
 print(classification_report(y_test, y_pred))
 
-"""# **KESIMPULAN**"""
+"""# **INSIGHT**
+
+Mengekstrak dan menampilkan apa saja fitur-fitur penting yang paling berpengaruh dalam hasil akhir mahasiswa
+"""
 
 # Feature importance
 feat_importances = pd.DataFrame({
@@ -231,9 +258,13 @@ feat_importances = pd.DataFrame({
         'Importance': model.feature_importances_
 }).sort_values('Importance', ascending=False)
 
+"""Model XGBClassifier menunjukkan bahwa 5 faktor paling berpengaruh dalam memprediksi hasil mahasiswa adalah jumlah mata kuliah yang lulus di semester kedua, status pembayaran biaya kuliah, serta jumlah mata kuliah yang diambil dan lulus di semester pertama dan kedua."""
+
 print("\n Top 5 factors predicting student outcomes:")
 for i, (feature, importance) in enumerate(zip(feat_importances['Feature'].head(5), feat_importances['Importance'].head(5))):
     print(f"{i+1}. {feature}: {importance:.4f}")
+
+"""Plotting untuk menampilkan fitur-fitur lainnya"""
 
 # Visualisasi top 15 fitur
 plt.figure(figsize=(12, 8))
@@ -244,7 +275,10 @@ plt.ylabel('Feature', fontsize=14)
 plt.tight_layout()
 plt.show()
 
-"""# **PERBANDINGAN DENGAN MODEL LAIN**"""
+"""# **EVALUATION & COMPARATION**
+
+Empat model klasifikasi dilatih dan dievaluasi untuk membandingkan performa prediksi hasil mahasiswa, dengan pendekatan ensemble (XGBoost dan Random Forest), model linier (Logistic Regression), dan instance-based (KNN).
+"""
 
 models = {
     "XGBoost": XGBClassifier(use_label_encoder=False, eval_metric='mlogloss'),
@@ -264,6 +298,8 @@ for name, model in models.items():
     acc = accuracy_score(y_test, y_pred)  # Calculate accuracy
     accuracies.append(acc)
     reports.append(classification_report(y_test, y_pred, output_dict=True))  # Store detailed report
+
+"""XGBoost memberikan hasil prediksi terbaik secara keseluruhan, terutama pada kelas mayoritas, diikuti oleh Random Forest dan Logistic Regression. KNN menunjukkan performa paling rendah dan kurang efektif untuk digunakan pada kasus ini."""
 
 # Plotting the accuracy for each model
 plt.figure(figsize=(10, 6))
