@@ -10,7 +10,7 @@ Dalam proyek ini, dibangun sebuah sistem klasifikasi berbasis machine learning y
 
 Tujuan utama dari sistem ini adalah untuk mengklasifikasikan mahasiswa berdasarkan kemungkinan mereka mengalami dropout atau berhasil menyelesaikan studinya. Dengan sistem ini, pihak kampus dapat mengidentifikasi kelompok risiko lebih awal dan menyusun strategi intervensi yang lebih efektif, seperti pendampingan akademik, beasiswa tambahan, atau konseling psikologis.
 
-Beberapa penelitian terdahulu juga telah membuktikan efektivitas model klasifikasi dalam kasus serupa. Penelitian oleh Castro et al. (2020) menggunakan XGBoost untuk memprediksi dropout dan berhasil mencapai akurasi lebih dari 90% [2]. Studi lain oleh Umer et al. (2022) menekankan bahwa faktor akademik semester awal, seperti jumlah evaluasi dan nilai mata kuliah, sangat berkontribusi dalam model prediktif [3].
+Beberapa penelitian terdahulu juga telah membuktikan efektivitas model klasifikasi dalam kasus serupa. Penelitian oleh Vieira Martins et al. (2021) menggunakan XGBoost untuk memprediksi dropout dan berhasil mencapai akurasi lebih dari 90% [2]. Studi lain oleh Sulak dan Koklu (2024) menekankan bahwa faktor akademik semester awal, seperti jumlah evaluasi dan nilai mata kuliah, sangat berkontribusi dalam model prediktif [3].
 
 Dengan pendekatan ini, diharapkan sistem prediksi berbasis machine learning dapat menjadi alat bantu pengambilan keputusan yang berdampak nyata dalam meningkatkan kualitas pendidikan tinggi dan mengurangi angka kegagalan studi khususnya di Indonesia.
 
@@ -115,9 +115,36 @@ Untuk memahami distribusi awal dari setiap fitur dalam dataset, dilakukan visual
    - Curricular units di semester 1 dan 2 seperti approved, grade, enrolled, dan evaluations menunjukkan distribusi yang sangat skewed ke kanan dengan banyak mahasiswa memiliki nilai/aktivitas rendah.
    - Fitur ekonomi makro seperti GDP, Unemployment rate, dan Inflation rate memiliki variabilitas cukup tinggi dan distribusi yang terfragmentasi, kemungkinan karena hanya mencerminkan beberapa tahun akademik tertentu.
 
-3. Potensi Masalah
-   - Beberapa fitur memiliki outlier ekstrem, seperti pada Age at enrollment, Previous qualification grade, dan GDP, yang perlu dipertimbangkan dalam proses praproses data.
-   - Terdapat ketidakseimbangan kelas yang jelas dalam beberapa fitur biner dan kategorikal, yang bisa memengaruhi performa model jika tidak diatasi dengan teknik tertentu seperti oversampling atau class weight.
+3. Missing Value
+   - Tidak ditemukan nilai yang hilang dalam dataset.
+   - Semua kolom lengkap dan dapat digunakan langsung tanpa proses imputasi.
+
+4. Duplikasi Data
+   - Tidak ditemukan data duplikat dalam dataset.
+   - Setiap baris data adalah unik.
+
+5. Outliers
+   - Analisis outlier pada fitur numerik kontinu dilakukan menggunakan metode Interquartile Range (IQR). Hasil menunjukkan seperti di bawah ini :
+      - Previous qualification (grade): 179 outliers (4.05%)
+      - Admission grade: 86 outliers (1.94%)
+      - Curricular units 1st sem (grade): 726 outliers (16.41%)
+      - Curricular units 2nd sem (grade): 877 outliers (19.82%)
+      - Unemployment rate, Inflation rate, GDP, Application mode, Mother's/Father's qualification: 0 outliers
+      - Course: 442 outliers (9.99%)
+      - Previous qualification: 707 outliers (15.98%)
+      - Nacionality: 110 outliers (2.49%)
+      - Mother's occupation: 182 outliers (4.11%)
+      - Father's occupation: 177 outliers (4.00%)
+      - Age at enrollment: 441 outliers (9.97%)
+      - Curricular units 1st sem (credited): 577 outliers (13.04%)
+      - Curricular units 1st sem (enrolled): 424 outliers (9.58%)
+      - Curricular units 1st sem (evaluations): 158 outliers (3.57%)
+      - Curricular units 1st sem (approved): 180 outliers (4.07%)
+      - Curricular units 1st sem (without evaluations): 294 outliers (6.65%)
+      - Curricular units 2nd sem (credited): 530 outliers (11.98%)
+      - Curricular units 2nd sem (enrolled): 369 outliers (8.34%)
+      - Curricular units 2nd sem (evaluations): 109 outliers (2.46%)
+      - Curricular units 2nd sem (approved): 44 outliers (0.99%)
 
 ## Data Preparation
 
@@ -134,9 +161,9 @@ Dalam proses data preparation yang dilakukan, beberapa tahapan penting diterapka
    - Proses: Pada kolom kategorikal, kami mengidentifikasi kategori langka (kategori yang memiliki frekuensi < 1%) dan mengganti kategori tersebut dengan label 'Other'. Hal ini dilakukan untuk mengurangi jumlah kategori yang sangat sedikit dan kemungkinan besar tidak memberikan informasi signifikan.
    - Alasan: Kategori langka bisa menambah kompleksitas model tanpa memberikan kontribusi berarti. Menghapus atau menggabungkannya menjadi 'Other' membuat model lebih sederhana dan lebih efisien.
 
-4. Normalisasi Data pada Kolom Numerikall
-   - Proses: Menggunakan StandardScaler untuk melakukan normalisasi pada fitur numerik. Teknik ini mengubah data sehingga memiliki distribusi dengan rata-rata 0 dan standar deviasi 1. Ini membantu model machine learning bekerja dengan lebih efisien, terutama pada algoritma yang sensitif terhadap skala fitur.
-   - Alasan: Dengan melakukan normalisasi, kita memastikan bahwa setiap fitur memiliki kontribusi yang setara dalam pelatihan model.
+4. Standarisasi Data pada Kolom Numerikal
+   - Proses: Menggunakan StandardScaler dari library sklearn untuk melakukan standarisasi pada fitur numerik. Teknik ini mengubah data sehingga memiliki distribusi dengan rata-rata 0 dan standar deviasi 1. Ini membantu model machine learning bekerja dengan lebih efisien, terutama pada algoritma yang sensitif terhadap skala fitur.
+   - Alasan: Dengan melakukan standarisasi, kita memastikan bahwa setiap fitur memiliki kontribusi yang setara dalam pelatihan model.
 
 5. Persiapan Fitur dan Target (Label Encoding pada Target)
    - Proses: Pada tahap ini, fitur prediktor (X) disiapkan dengan menghapus kolom 'target' dari DataFrame. Kemudian, kolom 'target' sebagai variabel yang akan diprediksi diubah menjadi bentuk numerik menggunakan LabelEncoder. Proses ini mengonversi kelas target dari bentuk kategorikal (string) menjadi bilangan bulat (misalnya: 'Graduate', 'Dropout', 'Enrolled' menjadi 0, 1, 2).
@@ -152,54 +179,63 @@ Dalam proses data preparation yang dilakukan, beberapa tahapan penting diterapka
 
 ## Modeling
 
-Pada tahap pemodelan ini, kami menggunakan XGBoost (Extreme Gradient Boosting) dengan algoritma XGBClassifier untuk menyelesaikan permasalahan klasifikasi pada dataset. Berikut adalah penjelasan terkait tahapan, parameter yang digunakan, serta proses evaluasi model:
+Pada tahap ini, kami membandingkan performa beberapa algoritma klasifikasi untuk menyelesaikan permasalahan pada dataset, yaitu:
 
-XGBClassifier adalah sebuah algoritma machine learning yang menggunakan model XGBoost (Extreme Gradient Boosting) untuk masalah klasifikasi. XGBoost adalah metode yang berbasis pada teknik Gradient Boosting, yang merupakan algoritma ensemble learning yang menggabungkan beberapa model prediksi (decision trees) untuk menghasilkan prediksi yang lebih kuat.
+- XGBoost (Extreme Gradient Boosting)
+- Random Forest
+- Logistic Regression
+- K-Nearest Neighbors (KNN)
 
-Cara Kerja:
+### XGBoost (XGBClassifier)
+XGBoost adalah metode ensemble learning berbasis Gradient Boosting, yang membangun sejumlah decision tree secara bertahap untuk meminimalkan kesalahan model sebelumnya. Model ini dikenal karena efisiensi, akurasi tinggi, serta kemampuannya dalam menangani data dengan outlier dan missing values.
 
-Gradient Boosting bekerja dengan membangun pohon keputusan (decision trees) secara bertahap. Setiap pohon yang baru dibangun akan berfokus untuk memperbaiki kesalahan yang dilakukan oleh pohon-pohon sebelumnya.
+- Cara kerja: Membangun pohon keputusan secara iteratif, di mana setiap pohon baru mempelajari kesalahan dari pohon sebelumnya menggunakan perhitungan gradien.
+- Parameter yang digunakan: Masih default, dengan use_label_encoder=False dan eval_metric='mlogloss'.
+- Parameter penting: `learning_rate=0.3, n_estimators=100, max_depth=6 subsample=1, colsample_bytree=1 objective='binary:logistic', booster='gbtree'`
+- Kelebihan:
+   - Akurasi tinggi dan efisien dalam pelatihan.
+   - Mampu menangani missing values dan outlier.
+   - Fleksibel untuk berbagai jenis masalah klasifikasi.
+- Kekurangan:
+   - Sensitif terhadap parameter.
+   - Kurang optimal pada dataset yang sangat tidak seimbang tanpa penyesuaian lanjutan.
+ 
+### Random Forest
+Random Forest merupakan algoritma ensemble berbasis bagging yang membangun banyak decision tree dan menggabungkan hasilnya (mayoritas suara) untuk menghasilkan prediksi akhir.
 
-XGBClassifier menggunakan pendekatan boosting di mana setiap pohon yang dibuat mencoba untuk mengurangi kesalahan dari pohon sebelumnya dengan menghitung gradien dari kesalahan tersebut.
+- Cara kerja: Mengambil subset acak dari data dan fitur, lalu membangun banyak pohon keputusan untuk mengurangi overfitting.
+- Parameter yang digunakan: Default (`n_estimators=100`).
+- Kelebihan:
+   - Tahan terhadap overfitting dibandingkan satu pohon.
+   - Dapat menangani data dengan fitur non-linear.
+   - Relatif mudah digunakan tanpa tuning berat.
+- Kekurangan:
+   - Kurang interpretatif dibandingkan model linear.
+   - Memerlukan sumber daya komputasi lebih besar untuk dataset besar.
 
-Model ini juga menggunakan berbagai teknik optimasi untuk meningkatkan kecepatan pelatihan dan mengurangi overfitting, seperti regularization, column subsampling, dan row subsampling.
+### Logistic Regression
+Logistic Regression adalah algoritma klasifikasi linier yang memodelkan hubungan antara input dan output menggunakan fungsi sigmoid.
 
-Parameter dan Nilai Parameter
-XGBClassifier dalam proyek ini masih menggunakan parameter default. Berikut adalah beberapa parameter default dalam XGBClassifier:
+- Cara kerja: Mengestimasi probabilitas kelas berdasarkan kombinasi linier dari fitur.
+- Parameter yang digunakan: `max_iter=1000` untuk memastikan konvergensi pada dataset besar.
+- Kelebihan:
+   - Sederhana, cepat, dan interpretatif.
+   - Cocok untuk baseline model dan data yang terdistribusi secara linier.
+- Kekurangan:
+   - Tidak cocok untuk relasi non-linear tanpa fitur tambahan.
+   - Performa terbatas jika fitur memiliki korelasi tinggi atau skala tidak distandarkan.
 
-- learning_rate: Default = 0.3
-  Menentukan ukuran langkah yang digunakan untuk memperbarui bobot di setiap iterasi. Nilai yang lebih rendah bisa meningkatkan ketelitian model tetapi membutuhkan lebih banyak pohon (iteration) untuk mencapai konvergensi.
+### K-Nearest Neighbors (KNN)
+KNN adalah algoritma non-parametrik yang melakukan klasifikasi berdasarkan kedekatan jarak antara sampel data.
 
-- n_estimators: Default = 100
-  Merupakan jumlah maksimum pohon keputusan yang akan dibuat oleh model. Setiap pohon memperbaiki kesalahan yang dilakukan oleh pohon sebelumnya.
-
-- max_depth: Default = 6
-  Menentukan kedalaman maksimal pohon keputusan. Semakin dalam pohon, semakin kompleks modelnya. Nilai yang lebih tinggi dapat menyebabkan overfitting jika tidak diatur dengan hati-hati.
-
-- subsample: Default = 1
-  Menentukan proporsi data yang digunakan untuk membangun setiap pohon keputusan. Pengaturan nilai lebih rendah dapat mencegah overfitting dengan melakukan subsampling pada data pelatihan.
-
-- colsample_bytree: Default = 1
-  Menentukan proporsi fitur yang digunakan untuk setiap pohon keputusan. Dengan menurunkan nilai ini, kita mengurangi kompleksitas model dan membantu generalisasi.
-
-- objective: Default = 'binary:logistic'
-  Menentukan jenis masalah yang ingin diselesaikan. Dalam hal ini, digunakan untuk masalah klasifikasi biner, di mana model akan mengoutputkan probabilitas untuk dua kelas.
-
-- booster: Default = 'gbtree'
-  Menentukan jenis model boosting yang digunakan. 'gbtree' mengindikasikan penggunaan pohon keputusan sebagai estimator dasar, yang umum digunakan untuk klasifikasi dan regresi.
-
-### Kelebihan dan Kekurangan XGBoost
-
-Kelebihan dan Kekurangan XGBClassifier
-
-Kelebihan:
-- Akurasi tinggi: XGBoost dikenal memiliki akurasi yang sangat baik, bahkan pada dataset besar dengan banyak fitur.
-- Kemampuan menangani missing values dan outliers: Model ini dapat menangani nilai yang hilang dan outliers dengan baik tanpa memerlukan preprocessing yang berlebihan.
-- Kecepatan dan Efisiensi: XGBoost sangat cepat dalam pelatihan dan prediksi karena optimisasi yang dilakukan pada level pohon keputusan.
-
-Kekurangan:
-- Sensitif terhadap parameter: Meskipun secara default sangat kuat, model ini sangat bergantung pada pengaturan parameter untuk mendapatkan performa terbaik.
-- Kesulitan dengan data yang sangat tidak seimbang: Meskipun SMOTE digunakan untuk penyeimbangan kelas, XGBoost mungkin masih mengalami kesulitan dalam menangani ketidakseimbangan kelas yang ekstrem tanpa penyesuaian lebih lanjut.
+- Cara kerja: Mengklasifikasikan sampel berdasarkan mayoritas label dari k tetangga terdekat.
+- Parameter yang digunakan: Default (`n_neighbors=5`).
+- Kelebihan:
+   - Sederhana dan efektif pada data kecil.
+   - Tidak memerlukan pelatihan model eksplisit (lazy learner).
+- Kekurangan:
+  - Sensitif terhadap skala fitur (butuh normalisasi).
+  - Tidak efisien untuk dataset besar karena perhitungan jarak dilakukan berulang.
 
 ## Evaluation
 
@@ -293,8 +329,8 @@ Dengan menggunakan model XGBoost untuk memprediksi risiko dropout mahasiswa, pro
 
 ## Daftar Pustaka
 
-[1] World Bank. (2021). Learning Poverty in the Time of COVID-19: A crisis within a crisis. https://www.worldbank.org/en/topic/education/publication/learning-poverty-in-the-time-of-covid-19
+[1] World Bank. (2021). Learning Poverty in the Time of COVID-19: A crisis within a crisis. https://documents1.worldbank.org/curated/en/163871606851736436/pdf/Learning-Poverty-in-the-Time-of-COVID-19-A-Crisis-Within-a-Crisis.pdf
 
-[2] Castro, M., Oliveira, M., & Silva, A. (2020). Early prediction of student dropout and academic failure using machine learning: A case study with Portuguese higher education data. Education and Information Technologies, 25, 4745–4763. https://doi.org/10.1007/s10639-020-10183-w
+[2] Vieira Martins, Mónica & Realinho, Valentim & Baptista, Luis & Machado, Jorge. (2021). Early Prediction of Student’s Performance in Higher Education: A Case Study. 10.1007/978-3-030-72657-7_16. https://www.researchgate.net/publication/351066139_Early_Prediction_of_Student's_Performance_in_Higher_Education_A_Case_Study
 
-[3] Umer, S. R., Sherin, S., & Ahmad, M. (2022). A predictive model for student dropout using supervised machine learning techniques. Computers & Education: Artificial Intelligence, 3, 100076. https://doi.org/10.1016/j.caeai.2022.100076
+[3] Sulak, Suleyman Alpaslan & Koklu, Nigmet. (2024). Predicting Student Dropout Using Machine Learning Algorithms. PLUSBASE AKADEMI ORGANIZASYON VE DANISMANLIK LTD STI. 3. 91-98. 10.58190/imiens.2024.103. https://www.researchgate.net/publication/384977767_Predicting_Student_Dropout_Using_Machine_Learning_Algorithms
